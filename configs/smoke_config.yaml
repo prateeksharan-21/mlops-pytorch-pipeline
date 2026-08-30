@@ -1,0 +1,25 @@
+# Fast end-to-end validation configuration. The production configuration remains
+# configs/training_config.yaml.
+model:
+  architecture: simple_cnn
+  num_classes: 10
+
+training:
+  epochs: 1
+  batch_size: 256
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  early_stopping_patience: 1
+  seed: 42
+
+data:
+  dataset: fake
+  data_dir: /app/data
+  num_workers: 2
+  download: false
+  train_samples: 1024
+  validation_samples: 256
+
+output:
+  checkpoint_dir: /app/checkpoints
+  model_name: classifier_v1.pt

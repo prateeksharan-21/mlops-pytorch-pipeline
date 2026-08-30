@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements/train.txt
+            requirements/serve.txt
+            requirements/dev.txt
+      - name: Install dependencies
+        run: pip install -r requirements/train.txt -r requirements/serve.txt -r requirements/dev.txt
+      - name: Lint
+        run: ruff check src tests
+      - name: Run tests
+        run: pytest -q
+      - name: Validate Dockerfiles can build
+        run: |
+          docker build -f docker/Dockerfile.train -t mlops-train:ci .
+          docker build -f docker/Dockerfile.serve -t mlops-serve:ci .
+
