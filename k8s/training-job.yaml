@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-training
+  namespace: ml-training
+  labels:
+    app: model-training
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: model-training
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: trainer
+          image: mlops-train:v1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CONFIG_PATH
+              value: /app/configs/training_config.yaml
+          resources:
+            requests:
+              cpu: "2"
+              memory: 4Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: training-config
+              mountPath: /app/configs
+              readOnly: true
+            - name: pipeline-storage
+              mountPath: /app/data
+              subPath: data
+            - name: pipeline-storage
+              mountPath: /app/checkpoints
+              subPath: checkpoints
+      initContainers:
+        - name: initialize-storage
+          image: busybox:1.37.0
+          command: ["sh", "-c", "mkdir -p /storage/data /storage/checkpoints"]
+          volumeMounts:
+            - name: pipeline-storage
+              mountPath: /storage
+      volumes:
+        - name: training-config
+          configMap:
+            name: training-config
+        - name: pipeline-storage
+          persistentVolumeClaim:
+            claimName: ml-pipeline-pvc

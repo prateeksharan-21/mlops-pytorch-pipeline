@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-serving
+  namespace: ml-training
+  labels:
+    app: model-serving
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: model-serving
+  template:
+    metadata:
+      labels:
+        app: model-serving
+    spec:
+      containers:
+        - name: api
+          image: mlops-serve:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: MODEL_PATH
+              value: /app/checkpoints/classifier_v1.pt
+          envFrom:
+            - secretRef:
+                name: model-serving-secrets
+                optional: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - name: pipeline-storage
+              mountPath: /app/checkpoints
+              subPath: checkpoints
+              readOnly: true
+      volumes:
+        - name: pipeline-storage
+          persistentVolumeClaim:
+            claimName: ml-pipeline-pvc
