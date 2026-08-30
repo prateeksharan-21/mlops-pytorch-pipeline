@@ -1,0 +1,14 @@
+# Optional bonus patch. Render it locally before creating the Job, because a
+# running Job's pod template is immutable:
+# kubectl patch --local -f k8s/training-job.yaml --patch-file k8s/training-job-gpu-patch.yaml -o yaml > training-job-gpu.yaml
+# kubectl apply -f training-job-gpu.yaml
+spec:
+  template:
+    spec:
+      nodeSelector:
+        accelerator: nvidia-gpu
+      containers:
+        - name: trainer
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
