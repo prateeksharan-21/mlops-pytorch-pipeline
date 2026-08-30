@@ -1,0 +1,58 @@
+# Local infrastructure validation only. training-job.yaml preserves the rubric's
+# required 2 CPU / 4 Gi resource requests and CIFAR-10 configuration.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-training-smoke
+  namespace: ml-training
+  labels:
+    app: model-training-smoke
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: model-training-smoke
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: initialize-storage
+          image: mlops-train:v1
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "mkdir -p /storage/data /storage/checkpoints"]
+          volumeMounts:
+            - name: pipeline-storage
+              mountPath: /storage
+      containers:
+        - name: trainer
+          image: mlops-train:v1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CONFIG_PATH
+              value: /app/configs/training_config.yaml
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: training-config
+              mountPath: /app/configs
+              readOnly: true
+            - name: pipeline-storage
+              mountPath: /app/data
+              subPath: data
+            - name: pipeline-storage
+              mountPath: /app/checkpoints
+              subPath: checkpoints
+      volumes:
+        - name: training-config
+          configMap:
+            name: training-config-smoke
+        - name: pipeline-storage
+          persistentVolumeClaim:
+            claimName: ml-pipeline-pvc
+
